@@ -169,7 +169,7 @@ func TestResponseHeaderMultiLineName(t *testing.T) {
 		" Line: This is a header on multiple lines\r\n" +
 		"\r\n"
 	header := new(ResponseHeader)
-	if _, err := header.parse([]byte(s)); err != errInvalidName {
+	if _, err := header.parse([]byte(s)); err != ErrInvalidName {
 		m := make(map[string]string)
 		for k, v := range header.All() {
 			m[string(k)] = string(v)
