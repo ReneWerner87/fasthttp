@@ -668,3 +668,17 @@ func TestURIRequestURIAfterResettingQueryArgs(t *testing.T) {
 		t.Fatalf("unexpected RequestURI %q; want %q", got, "/path")
 	}
 }
+
+func TestHostShouldEscapeTable(t *testing.T) {
+	t.Parallel()
+
+	for c := 0; c < 256; c++ {
+		want := byte(0)
+		if c < 0x80 && shouldEscape(byte(c), encodeHost) {
+			want = 1
+		}
+		if hostShouldEscapeTable[c] != want {
+			t.Fatalf("hostShouldEscapeTable[%d] = %d, want %d", c, hostShouldEscapeTable[c], want)
+		}
+	}
+}

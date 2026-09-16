@@ -98,6 +98,35 @@ func main() {
 		return a
 	}()
 
+	hostShouldEscapeTable := func() [256]byte {
+		// The bytes unescape rejects in a host, that is shouldEscape(c, encodeHost) for ASCII.
+		// Everything from 0x80 up stays allowed, so the table also carries unescape's `s[i] < 0x80` guard.
+		var a [256]byte
+		for i := 0; i < 128; i++ {
+			a[i] = 1
+		}
+
+		// ALPHA
+		for i := int('a'); i <= int('z'); i++ {
+			a[i] = 0
+		}
+		for i := int('A'); i <= int('Z'); i++ {
+			a[i] = 0
+		}
+
+		// DIGIT
+		for i := int('0'); i <= int('9'); i++ {
+			a[i] = 0
+		}
+
+		// sub-delims, the port and IPv6 brackets, and the unreserved marks
+		for _, v := range `!$&'()*+,;=:[]<>"-_.~` {
+			a[v] = 0
+		}
+
+		return a
+	}()
+
 	validHeaderFieldByteTable := func() [128]byte {
 		// Should match net/textproto's validHeaderFieldByte(c byte) bool
 		// Defined by RFC 7230 and 9110:
@@ -247,6 +276,7 @@ func main() {
 	fmt.Fprintf(w, "const toUpperTable = %q\n", toUpperTable)
 	fmt.Fprintf(w, "const quotedArgShouldEscapeTable = %q\n", quotedArgShouldEscapeTable)
 	fmt.Fprintf(w, "const quotedPathShouldEscapeTable = %q\n", quotedPathShouldEscapeTable)
+	fmt.Fprintf(w, "const hostShouldEscapeTable = %q\n", hostShouldEscapeTable)
 	fmt.Fprintf(w, "const validHeaderFieldByteTable = %q\n", validHeaderFieldByteTable)
 	fmt.Fprintf(w, "const validHeaderValueByteTable = %q\n", validHeaderValueByteTable)
 	fmt.Fprintf(w, "const validMethodValueByteTable = %q\n", validMethodValueByteTable)

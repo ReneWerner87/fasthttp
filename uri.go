@@ -464,19 +464,42 @@ func parseHost(host []byte) ([]byte, error) {
 			return append(host1, append(host2, host3...)...), nil
 		}
 	} else {
-		if bytes.IndexByte(host, '[') >= 0 || bytes.IndexByte(host, ']') >= 0 {
-			return nil, fmt.Errorf("invalid host %q", host)
+		// one pass for what three scans and the walk inside unescape used to look for
+		lastColon, invalid := -1, -1
+		twoColons, escaped := false, false
+		for i, c := range host {
+			switch c {
+			case '[', ']':
+				return nil, fmt.Errorf("invalid host %q", host)
+			case ':':
+				twoColons = twoColons || lastColon != -1
+				lastColon = i
+			case '%':
+				escaped = true
+			default:
+				if invalid == -1 && hostShouldEscapeTable[c] == 1 {
+					invalid = i
+				}
+			}
 		}
 
-		if i := bytes.LastIndexByte(host, ':'); i != -1 {
-			if bytes.IndexByte(host[:i], ':') != -1 {
+		if lastColon != -1 {
+			if twoColons {
 				return nil, fmt.Errorf("invalid host %q with multiple port delimiters", host)
 			}
 
-			colonPort := host[i:]
+			colonPort := host[lastColon:]
 			if !validOptionalPort(colonPort) {
 				return nil, fmt.Errorf("invalid port %q after host", colonPort)
 			}
+		}
+
+		// without a % there is nothing to decode, and validateIPv6Literal only looks for a leading '[' this branch ruled out
+		if !escaped {
+			if invalid != -1 {
+				return nil, InvalidHostError(host[invalid : invalid+1])
+			}
+			return host, nil
 		}
 	}
 
@@ -553,7 +576,7 @@ func unescape(s []byte, mode encoding) ([]byte, error) {
 			}
 			i += 3
 		default:
-			if (mode == encodeHost || mode == encodeZone) && s[i] < 0x80 && shouldEscape(s[i], mode) {
+			if (mode == encodeHost || mode == encodeZone) && hostShouldEscapeTable[s[i]] == 1 {
 				return nil, InvalidHostError(s[i : i+1])
 			}
 			i++
