@@ -2422,12 +2422,21 @@ func updateServerDate() {
 
 var (
 	serverDate     atomic.Pointer[[]byte]
+	serverSecond   atomic.Int64
 	serverDateOnce sync.Once // serverDateOnce.Do(updateServerDate)
 )
 
 func refreshServerDate() {
-	b := AppendHTTPDate(nil, time.Now())
+	now := time.Now()
+	b := AppendHTTPDate(nil, now)
 	serverDate.Store(&b)
+	serverSecond.Store(now.Unix())
+}
+
+// coarseSecond serves bookkeeping that only needs whole seconds, refreshed by the server date goroutine.
+func coarseSecond() int64 {
+	serverDateOnce.Do(updateServerDate)
+	return serverSecond.Load()
 }
 
 // Write writes response header to w.

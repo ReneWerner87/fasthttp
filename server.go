@@ -1000,8 +1000,13 @@ func (ctx *RequestCtx) ConnID() uint64 {
 	return ctx.connID
 }
 
-// Time returns RequestHandler call time.
+// Time returns the time the handler first asked for it.
+//
+// The clock is only read on the first call, so a handler that never asks costs nothing.
 func (ctx *RequestCtx) Time() time.Time {
+	if ctx.time.IsZero() {
+		ctx.time = time.Now()
+	}
 	return ctx.time
 }
 
@@ -2639,7 +2644,7 @@ func (s *Server) serveConnCounted(c net.Conn, countConcurrency bool) error {
 		}
 		ctx.connID = connID
 		ctx.connRequestNum = connRequestNum
-		ctx.time = time.Now()
+		ctx.time = zeroTime
 
 		// If a client denies a request the handler should not be called
 		if continueReadingRequest {
@@ -2755,7 +2760,7 @@ func (s *Server) serveConnCounted(c net.Conn, countConcurrency bool) error {
 			ctx.Request.bodyStream = nil
 		}
 
-		idleConnTime.Store(ctx.time.Unix())
+		idleConnTime.Store(coarseSecond())
 		s.setState(c, StateIdle)
 		ctx.Request.Reset()
 		ctx.Response.Reset()

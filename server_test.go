@@ -5446,3 +5446,23 @@ func TestRequestCtxInitShouldNotBeCanceledIssue1879(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRequestCtxTimeOnDemand(t *testing.T) {
+	t.Parallel()
+
+	var ctx RequestCtx
+	if !ctx.time.IsZero() {
+		t.Fatalf("a fresh context should not carry a time yet")
+	}
+
+	first := ctx.Time()
+	if first.IsZero() {
+		t.Fatalf("Time returned the zero time")
+	}
+	if second := ctx.Time(); !second.Equal(first) {
+		t.Fatalf("Time changed within a request: %v then %v", first, second)
+	}
+	if got := coarseSecond(); got == 0 {
+		t.Fatalf("coarseSecond returned 0")
+	}
+}
